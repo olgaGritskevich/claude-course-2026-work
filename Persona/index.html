@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Оля — визитка</title>
+<style>
+  :root {
+    --accent: #b5622f;
+    --accent-dark: #7c3f1c;
+    --ink: #2b2420;
+    --paper: #faf6f2;
+    --muted: #6d6259;
+    --card: #ffffff;
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.65;
+  }
+
+  h1, h2, h3 {
+    font-family: Georgia, "Times New Roman", serif;
+    margin: 0 0 0.5em;
+    font-weight: 700;
+  }
+
+  p { margin: 0 0 1em; }
+
+  .container {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ---------- HERO ---------- */
+
+  .hero {
+    position: relative;
+    min-height: 78vh;
+    display: flex;
+    align-items: flex-end;
+    background: #2a1c14 url('images/0-02-05-a43ae030562a26ee4c9442abae08cad050dec9ec187841c4d22792b7d089e003_3c6c8d3aec34bb15.jpg') center 39% / cover no-repeat;
+    color: #fff;
+  }
+
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(30, 18, 10, 0.2) 0%, rgba(30, 18, 10, 0.55) 55%, rgba(20, 12, 7, 0.9) 100%);
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    padding: 48px 24px 56px;
+    max-width: 980px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.8rem;
+    color: #f0d9c4;
+    margin-bottom: 14px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.2rem, 6vw, 3.6rem);
+    margin-bottom: 10px;
+    text-shadow: 0 2px 18px rgba(0,0,0,0.35);
+  }
+
+  .hero .tagline {
+    font-size: clamp(1rem, 2.4vw, 1.25rem);
+    color: #f7ece0;
+    max-width: 620px;
+    margin: 0;
+  }
+
+  /* ---------- SECTIONS ---------- */
+
+  section {
+    padding: 64px 0;
+  }
+
+  section h2 {
+    font-size: clamp(1.6rem, 4vw, 2.1rem);
+    color: var(--accent-dark);
+    margin-bottom: 28px;
+    position: relative;
+    padding-bottom: 14px;
+  }
+
+  section h2::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 56px;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--accent);
+  }
+
+  .lede {
+    font-size: 1.08rem;
+  }
+
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 40px;
+    align-items: stretch;
+  }
+
+  .about-photo {
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(90, 50, 20, 0.1);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .about-photo img {
+    width: 100%;
+    height: 320px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .about-photo figcaption {
+    padding: 14px 18px;
+    font-size: 0.92rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  blockquote {
+    margin: 28px 0 0;
+    padding: 18px 22px;
+    border-left: 4px solid var(--accent);
+    background: #f6e8dd;
+    border-radius: 0 12px 12px 0;
+    font-style: italic;
+    color: var(--accent-dark);
+  }
+
+  /* ---------- WORK CARDS ---------- */
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 8px;
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(90, 50, 20, 0.1);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .card-body {
+    padding: 18px 20px 22px;
+  }
+
+  .card-body h3 {
+    font-size: 1.05rem;
+    color: var(--accent-dark);
+    margin-bottom: 8px;
+  }
+
+  .card-body p {
+    font-size: 0.94rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  /* ---------- GALLERY STRIP ---------- */
+
+  .gallery-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 44px;
+  }
+
+  .gallery-strip img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: var(--radius);
+    display: block;
+    box-shadow: 0 6px 20px rgba(90, 50, 20, 0.1);
+  }
+
+  /* ---------- FACTS ---------- */
+
+  .facts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+
+  .fact-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 24px 24px;
+    box-shadow: 0 6px 24px rgba(90, 50, 20, 0.1);
+  }
+
+  .fact-card h3 {
+    font-size: 1.02rem;
+    color: var(--accent-dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .fact-card .icon {
+    font-size: 1.3rem;
+  }
+
+  .fact-card p {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  /* ---------- FINALE ---------- */
+
+  .finale {
+    position: relative;
+    min-height: 52vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #241a12 url('images/изображение_viber_2026-09-17_14-32-39-430.jpg') center 44% / cover no-repeat;
+    color: #fff;
+    text-align: center;
+    padding: 56px 24px;
+  }
+
+  .finale::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(25, 16, 10, 0.72) 0%, rgba(25, 16, 10, 0.45) 45%, rgba(25, 16, 10, 0.82) 100%);
+  }
+
+  .finale-content {
+    position: relative;
+    z-index: 1;
+    max-width: 640px;
+  }
+
+  .finale blockquote {
+    background: transparent;
+    border: none;
+    color: #fdf4ec;
+    font-size: clamp(1.2rem, 3vw, 1.6rem);
+    font-family: Georgia, serif;
+    margin: 0 0 14px;
+    padding: 0;
+    text-shadow: 0 2px 14px rgba(0,0,0,0.4);
+  }
+
+  .finale cite {
+    font-style: normal;
+    color: #f0d9c4;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+  }
+
+  /* ---------- FOOTER ---------- */
+
+  footer {
+    background: var(--accent-dark);
+    color: #f0d9c4;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 20px 0;
+    letter-spacing: 0.04em;
+  }
+
+  footer .container p { margin: 0; }
+
+  /* ---------- RESPONSIVE ---------- */
+
+  @media (max-width: 760px) {
+    .about-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .about-photo img {
+      height: 260px;
+    }
+
+    .card-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .gallery-strip {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .facts-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero {
+      min-height: 60vh;
+    }
+
+    .finale {
+      min-height: 44vh;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <div class="hero-content">
+      <div class="eyebrow">Логист · Гродно</div>
+      <h1>Оля</h1>
+      <p class="tagline">Тихая сила, крепкая опора и дело, которое люблю по-настоящему.</p>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section id="about">
+      <h2>Обо мне</h2>
+      <div class="about-grid">
+        <div>
+          <p class="lede">Меня зовут Оля. Мне тридцать восемь, и я давно поняла: самые крепкие вещи в жизни — это те, что строятся тихо, без лишнего шума.</p>
+          <p>Я живу в Гродно — городе, который стал для меня настоящим домом. Здесь у меня семья: муж и двое детей, ради которых я готова на многое, и с которыми моя жизнь обрела смысл и опору.</p>
+          <blockquote>Самые крепкие вещи строятся тихо, без лишнего шума.</blockquote>
+        </div>
+        <figure class="about-photo">
+          <img src="images/0-02-05-e7119bb91b89fff7c39298674c191f40a578890f501ac2543e1d96dd0ab65688_c66423c75b27b5f7.jpg" alt="Оля в Гродно">
+          <figcaption>Гродно — город, который стал домом.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="work">
+      <h2>Чем занимаюсь</h2>
+      <p class="lede">Работаю логистом. Может показаться, что это просто профессия, но для меня это — призвание.</p>
+
+      <div class="card-grid">
+        <div class="card">
+          <img src="images/photo_2026-07-25_21-24-07.jpg" alt="Командный выезд коллектива на природу">
+          <div class="card-body">
+            <h3>Порядок из хаоса</h3>
+            <p>Мне нравится выстраивать порядок из хаоса и находить решения там, где другие видят тупик — и знать, что за каждой отлаженной цепочкой стоит моя работа.</p>
+          </div>
+        </div>
+        <div class="card">
+          <img src="images/изображение_viber_2026-09-17_13-56-40-099.jpg" alt="Командное мероприятие коллег">
+          <div class="card-body">
+            <h3>Команда, в которой я на месте</h3>
+            <p>Особенно ценю компанию, в которой сейчас тружусь — здесь я чувствую себя на своём месте, а работа ощущается как призвание, а не просто профессия.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="gallery-strip">
+        <img src="images/photo_2026-06-03_11-10-33.jpg" alt="Оля на прогулке">
+        <img src="images/0-02-05-02a5ea0f73efdcaebc6609b96c573784c4df669e0a9f3abc42fb17d1c2bd6111_d34499d160f92a4e.jpg" alt="Оля в саду">
+        <img src="images/изображение_viber_2026-09-17_14-31-39-577.jpg" alt="Оля в белом костюме">
+      </div>
+    </section>
+
+    <section id="facts">
+      <h2>Какая я</h2>
+      <div class="facts-grid">
+        <div class="fact-card">
+          <h3><span class="icon">🤫</span> Тихая сила</h3>
+          <p>По характеру я трудолюбивая, но не люблю быть на виду. Предпочитаю оставаться в тени — не потому что боюсь света, а потому что настоящая сила не нуждается в аплодисментах.</p>
+        </div>
+        <div class="fact-card">
+          <h3><span class="icon">🤝</span> Честность без драмы</h3>
+          <p>Я честна и прямолинейна: со мной сложно поссориться, потому что я не держу обид и не раздуваю конфликты понапрасну.</p>
+        </div>
+        <div class="fact-card">
+          <h3><span class="icon">🧭</span> Свои принципы</h3>
+          <p>Но точно так же невозможно «перетянуть одеяло» — свои принципы я не сдаю.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <section class="finale">
+    <div class="finale-content">
+      <blockquote>«Так и живу: тихо, надёжно, с семьёй за спиной и делом, которое люблю.»</blockquote>
+      <cite>— Оля</cite>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>Оля · Логист · Гродно</p>
+    </div>
+  </footer>
+
+</body>
+</html>
