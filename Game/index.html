@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>RETRO RACER</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #0a0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Courier New", monospace;
+    overflow: hidden;
+  }
+
+  .tv-frame {
+    position: relative;
+    background: linear-gradient(160deg, #4a4a4a 0%, #2a2a2a 45%, #1a1a1a 100%);
+    border-radius: 34px;
+    padding: 26px 26px 44px 26px;
+    box-shadow:
+      0 0 0 3px #050505,
+      0 24px 60px rgba(0,0,0,0.7),
+      inset 0 2px 4px rgba(255,255,255,0.08),
+      inset 0 -6px 10px rgba(0,0,0,0.6);
+  }
+
+  .tv-brand {
+    position: absolute;
+    top: 8px;
+    left: 34px;
+    color: #888;
+    font-size: 11px;
+    letter-spacing: 3px;
+    font-weight: bold;
+  }
+
+  .screen-wrap {
+    position: relative;
+    width: 900px;
+    height: 600px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #000;
+    box-shadow:
+      inset 0 0 40px rgba(0,0,0,0.9),
+      inset 0 0 4px rgba(0,0,0,1);
+  }
+
+  canvas {
+    display: block;
+    width: 900px;
+    height: 600px;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 1px,
+      rgba(0,0,0,0.16) 2px,
+      rgba(0,0,0,0.16) 3px
+    );
+    mix-blend-mode: multiply;
+  }
+
+  .vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.55) 100%);
+  }
+
+  .glass-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(120deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 30%);
+  }
+
+  .knobs {
+    position: absolute;
+    bottom: 10px;
+    right: 30px;
+    display: flex;
+    gap: 14px;
+  }
+  .knob {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #999, #333 70%);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+
+  .led {
+    position: absolute;
+    bottom: 14px;
+    left: 34px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff3b3b;
+    box-shadow: 0 0 6px 2px rgba(255,59,59,0.8);
+  }
+</style>
+</head>
+<body>
+
+  <div class="tv-frame">
+    <div class="tv-brand">RETROVIZOR-8</div>
+    <div class="screen-wrap">
+      <canvas id="game" width="900" height="600"></canvas>
+      <div class="scanlines"></div>
+      <div class="vignette"></div>
+      <div class="glass-glow"></div>
+    </div>
+    <div class="knobs">
+      <div class="knob"></div>
+      <div class="knob"></div>
+    </div>
+    <div class="led"></div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------
+  // Setup
+  // ---------------------------------------------------------------
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+
+  const W = canvas.width;   // 900
+  const H = canvas.height;  // 600
+
+  const ROAD_LEFT = 210;
+  const ROAD_RIGHT = 690;
+  const ROAD_WIDTH = ROAD_RIGHT - ROAD_LEFT;
+
+  // ---------------------------------------------------------------
+  // Palette (limited, NES-ish)
+  // ---------------------------------------------------------------
+  const PAL = {
+    sky: "#1a1024",
+    grassDark: "#1e6b30",
+    grassLight: "#249938",
+    road: "#4a4a52",
+    roadEdge: "#333338",
+    rumbleA: "#c8302a",
+    rumbleB: "#e8e8e0",
+    laneLine: "#e8e8d8",
+    treeTrunk: "#6b4626",
+    treeLeafDark: "#3fa34d",
+    treeLeafLight: "#7ed957",
+    black: "#0c0c0c",
+    white: "#f4f4ec",
+    textShadow: "#000000",
+    yellowH: "#ffe98a",
+    redT: "#ff4433",
+    windshield: "#8fd3ff"
+  };
+
+  const CAR_COLORS = ["#f2c14e", "#4caf6d", "#9b5de5", "#ff7f11", "#3aa6ff", "#ff5da2"];
+
+  // ---------------------------------------------------------------
+  // Car pixel sprite (9 wide x 14 tall), top-down, nose at top
+  // ---------------------------------------------------------------
+  const CAR_BITMAP = [
+    ".KKKKKKK.",
+    ".KHBBBHK.",
+    ".KBBBBBK.",
+    ".KBWWWBK.",
+    ".KWWWWWK.",
+    "EKBBBBBKE",
+    ".KBBBBBK.",
+    ".KBBBBBK.",
+    ".KBBBBBK.",
+    ".KWWWWWK.",
+    ".KBBBBBK.",
+    "EKBBBBBKE",
+    ".KBBBBBK.",
+    ".KTTTTTK."
+  ];
+  const CAR_PXSIZE = 4;
+  const CAR_W = 9 * CAR_PXSIZE;   // 36
+  const CAR_H = 14 * CAR_PXSIZE;  // 56
+
+  // Generic pixel-bitmap sprite drawer, reused for cars and trees.
+  function drawSprite(bitmap, palette, cx, topY, pxSize) {
+    const w = bitmap[0].length;
+    const originX = Math.round(cx - (w * pxSize) / 2);
+    const originY = Math.round(topY);
+    for (let row = 0; row < bitmap.length; row++) {
+      const line = bitmap[row];
+      for (let col = 0; col < line.length; col++) {
+        const ch = line[col];
+        if (ch === ".") continue;
+        ctx.fillStyle = palette[ch];
+        ctx.fillRect(
+          originX + col * pxSize,
+          originY + row * pxSize,
+          pxSize,
+          pxSize
+        );
+      }
+    }
+  }
+
+  function drawCar(cx, topY, bodyColor) {
+    const palette = {
+      K: PAL.black,
+      B: bodyColor,
+      W: PAL.windshield,
+      H: PAL.yellowH,
+      T: PAL.redT,
+      E: "#141414"
+    };
+    drawSprite(CAR_BITMAP, palette, cx, topY, CAR_PXSIZE);
+  }
+
+  // ---------------------------------------------------------------
+  // Deterministic pseudo-random (for scenery, stable across frames)
+  // ---------------------------------------------------------------
+  function hash01(n) {
+    const x = Math.sin(n * 12.9898) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  // Pixel tree sprite (9 wide x 12 tall): round canopy over a trunk.
+  const TREE_BITMAP = [
+    "...KKK...",
+    "..KLLLK..",
+    ".KLLLLLK.",
+    "KLLLLLLLK",
+    ".KLLLLLK.",
+    "KLLLLLLLK",
+    ".KLLLLLK.",
+    "..KLLLK..",
+    "..KTTTK..",
+    "..KTTTK..",
+    "..KTTTK..",
+    "..KTTTK.."
+  ];
+  const TREE_PXSIZE = 4;
+  const TREE_H = TREE_BITMAP.length * TREE_PXSIZE; // 48
+
+  function drawTree(x, baseY, seed) {
+    const palette = {
+      K: PAL.black,
+      L: seed > 0.5 ? PAL.treeLeafLight : PAL.treeLeafDark,
+      T: PAL.treeTrunk
+    };
+    drawSprite(TREE_BITMAP, palette, x, baseY - TREE_H, TREE_PXSIZE);
+  }
+
+  // ---------------------------------------------------------------
+  // Game state
+  // ---------------------------------------------------------------
+  const STATE = { START: "start", PLAYING: "playing", GAMEOVER: "gameover" };
+
+  let state = STATE.START;
+  let worldDistance = 0;
+  let score = 0;
+  let best = 0;
+  try {
+    const saved = localStorage.getItem("retroRacerBest");
+    if (saved) best = parseInt(saved, 10) || 0;
+  } catch (e) { /* localStorage unavailable, ignore */ }
+
+  const player = {
+    x: (ROAD_LEFT + ROAD_RIGHT) / 2,
+    y: H - 110,
+    vx: 0
+  };
+
+  let obstacles = [];
+  let spawnTimer = 0;
+  let flashTimer = 0;
+  let blinkTimer = 0;
+
+  const MIN_SPEED = 170;
+
+  function resetGame() {
+    worldDistance = 0;
+    score = 0;
+    player.x = (ROAD_LEFT + ROAD_RIGHT) / 2;
+    player.vx = 0;
+    obstacles = [];
+    spawnTimer = 0.6;
+    flashTimer = 0;
+  }
+
+  // ---------------------------------------------------------------
+  // Input — arrow keys drive the car, never scroll the page
+  // ---------------------------------------------------------------
+  const keys = {};
+  const CONTROL_CODES = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space", "Enter"];
+
+  window.addEventListener("keydown", function (e) {
+    if (CONTROL_CODES.indexOf(e.code) !== -1) {
+      e.preventDefault();
+    }
+    keys[e.code] = true;
+
+    if (e.code === "Space" || e.code === "Enter") {
+      if (state === STATE.START || state === STATE.GAMEOVER) {
+        ensureAudio();
+        resetGame();
+        state = STATE.PLAYING;
+        beep(660, 0.08, "square", 0.15);
+      }
+    }
+  }, { passive: false });
+
+  window.addEventListener("keyup", function (e) {
+    if (CONTROL_CODES.indexOf(e.code) !== -1) {
+      e.preventDefault();
+    }
+    keys[e.code] = false;
+  }, { passive: false });
+
+  // ---------------------------------------------------------------
+  // Audio (generated in-code, no external files)
+  // ---------------------------------------------------------------
+  let audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) { /* audio unsupported, ignore */ }
+    } else if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+  }
+
+  function beep(freq, dur, type, vol) {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type || "square";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol || 0.15, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + dur);
+  }
+
+  function crashSound() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const bufferSize = Math.floor(audioCtx.sampleRate * 0.35);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 900;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.5, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    noise.connect(filter).connect(gain).connect(audioCtx.destination);
+    noise.start(t);
+  }
+
+  // ---------------------------------------------------------------
+  // Update
+  // ---------------------------------------------------------------
+  function currentBaseSpeed() {
+    return Math.min(MIN_SPEED + worldDistance * 0.035, 480);
+  }
+
+  function spawnInterval() {
+    return Math.max(1.35 - worldDistance * 0.0006, 0.5);
+  }
+
+  function update(dt) {
+    if (state !== STATE.PLAYING) return;
+
+    const baseSpeed = currentBaseSpeed();
+    let throttle = 1;
+    if (keys["ArrowUp"]) throttle = 1.55;
+    if (keys["ArrowDown"]) throttle = 0.55;
+    const speed = baseSpeed * throttle;
+
+    // steering
+    const ACCEL = 900;
+    const FRICTION = 8;
+    const MAX_VX = 340;
+    if (keys["ArrowLeft"]) player.vx -= ACCEL * dt;
+    if (keys["ArrowRight"]) player.vx += ACCEL * dt;
+    if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
+      player.vx -= player.vx * Math.min(FRICTION * dt, 1);
+    }
+    player.vx = Math.max(-MAX_VX, Math.min(MAX_VX, player.vx));
+    player.x += player.vx * dt;
+
+    const halfW = CAR_W / 2 + 6;
+    if (player.x < ROAD_LEFT + halfW) { player.x = ROAD_LEFT + halfW; player.vx = 0; }
+    if (player.x > ROAD_RIGHT - halfW) { player.x = ROAD_RIGHT - halfW; player.vx = 0; }
+
+    worldDistance += speed * dt;
+    score = Math.floor(worldDistance / 8);
+    if (score > best) best = score;
+
+    // spawn obstacles
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnTimer = spawnInterval();
+      const minX = ROAD_LEFT + CAR_W / 2 + 14;
+      const maxX = ROAD_RIGHT - CAR_W / 2 - 14;
+      const x = minX + Math.random() * (maxX - minX);
+      const color = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
+      obstacles.push({ x: x, y: -CAR_H, color: color });
+    }
+
+    // move obstacles (slower than player's forward progress -> they "approach")
+    const obstacleScreenSpeed = speed * 0.5;
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const ob = obstacles[i];
+      ob.y += obstacleScreenSpeed * dt;
+      if (ob.y > H + CAR_H) {
+        obstacles.splice(i, 1);
+        continue;
+      }
+      // collision check
+      const dx = Math.abs(ob.x - player.x);
+      const dy = Math.abs(ob.y - player.y);
+      if (dx < CAR_W - 10 && dy < CAR_H - 14) {
+        crash();
+      }
+    }
+
+    flashTimer = Math.max(0, flashTimer - dt);
+  }
+
+  function crash() {
+    if (state !== STATE.PLAYING) return;
+    state = STATE.GAMEOVER;
+    flashTimer = 0.35;
+    crashSound();
+    try { localStorage.setItem("retroRacerBest", String(best)); } catch (e) { /* ignore */ }
+  }
+
+  // ---------------------------------------------------------------
+  // Draw
+  // ---------------------------------------------------------------
+  function drawText(text, x, y, size, color, align) {
+    ctx.font = "bold " + size + "px monospace";
+    ctx.textAlign = align || "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = PAL.textShadow;
+    ctx.fillText(text, x + 2, y + 2);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+
+  function drawScene() {
+    // background / grass
+    ctx.fillStyle = PAL.grassDark;
+    ctx.fillRect(0, 0, W, H);
+
+    const stripeH = 40;
+    const offset = worldDistance % (stripeH * 2);
+    for (let y = -stripeH * 2; y < H + stripeH * 2; y += stripeH) {
+      const yy = y + offset;
+      if (Math.floor((y + offset) / stripeH) % 2 === 0) continue;
+      ctx.fillStyle = PAL.grassLight;
+      ctx.fillRect(0, yy, ROAD_LEFT, stripeH);
+      ctx.fillRect(ROAD_RIGHT, yy, W - ROAD_RIGHT, stripeH);
+    }
+
+    // trees (deterministic scattered rows, scrolling)
+    const dist = worldDistance;
+    drawTreesSide(true, dist);
+    drawTreesSide(false, dist);
+
+    // road bed
+    ctx.fillStyle = PAL.roadEdge;
+    ctx.fillRect(ROAD_LEFT - 10, 0, ROAD_WIDTH + 20, H);
+    ctx.fillStyle = PAL.road;
+    ctx.fillRect(ROAD_LEFT, 0, ROAD_WIDTH, H);
+
+    // rumble strips
+    const segH = 34;
+    const segOffset = worldDistance % (segH * 2);
+    for (let y = -segH * 2; y < H + segH * 2; y += segH) {
+      const yy = y + segOffset;
+      const idx = Math.floor((y + segOffset) / segH);
+      ctx.fillStyle = (idx % 2 === 0) ? PAL.rumbleA : PAL.rumbleB;
+      ctx.fillRect(ROAD_LEFT - 10, yy, 10, segH);
+      ctx.fillRect(ROAD_RIGHT, yy, 10, segH);
+    }
+
+    // lane lines (two dashed lines splitting road into 3 lanes)
+    const dashH = 30, gapH = 26;
+    const cycle = dashH + gapH;
+    const laneOffset = worldDistance % cycle;
+    const laneXs = [
+      ROAD_LEFT + ROAD_WIDTH / 3,
+      ROAD_LEFT + (2 * ROAD_WIDTH) / 3
+    ];
+    ctx.fillStyle = PAL.laneLine;
+    for (const lx of laneXs) {
+      for (let y = -cycle; y < H + cycle; y += cycle) {
+        const yy = y + laneOffset;
+        ctx.fillRect(lx - 3, yy, 6, dashH);
+      }
+    }
+
+    // obstacles
+    for (const ob of obstacles) {
+      drawCar(ob.x, ob.y, ob.color);
+    }
+
+    // player
+    drawCar(player.x, player.y, "#e6392f");
+
+    // crash flash
+    if (flashTimer > 0) {
+      ctx.fillStyle = "rgba(255,40,40," + (flashTimer / 0.35 * 0.5) + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawTreesSide(isLeft, dist) {
+    const TREE_SPACING = 150;
+    const baseIndex = Math.floor((dist - H) / TREE_SPACING) - 1;
+    const count = Math.ceil((H + TREE_SPACING * 2) / TREE_SPACING);
+    for (let i = 0; i <= count; i++) {
+      const rowIndex = baseIndex + i;
+      const worldY = rowIndex * TREE_SPACING;
+      const screenY = worldY - dist + H;
+      if (screenY < -60 || screenY > H + 60) continue;
+      const seed = hash01(rowIndex * (isLeft ? 3.1 : 7.7));
+      if (seed < 0.25) continue; // sparse gaps
+      const jitter = hash01(rowIndex * (isLeft ? 5.3 : 9.1)) * 60;
+      const x = isLeft ? (40 + jitter) : (W - 40 - jitter);
+      drawTree(x, screenY, hash01(rowIndex * 2.2));
+    }
+  }
+
+  function drawHUD() {
+    drawText("SCORE " + pad(score, 6), 20, 16, 20, PAL.white, "left");
+    drawText("BEST " + pad(best, 6), W - 20, 16, 20, PAL.white, "right");
+    const speedPct = Math.round((currentBaseSpeed() / 480) * 100);
+    drawText(speedPct + " KM/H", 20, H - 34, 16, PAL.yellowH, "left");
+  }
+
+  function pad(n, len) {
+    let s = String(n);
+    while (s.length < len) s = "0" + s;
+    return s;
+  }
+
+  function drawStartScreen() {
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(0, 0, W, H);
+    drawText("RETRO RACER", W / 2, 190, 46, "#ff5533", "center");
+    drawText("8-BIT HIGHWAY", W / 2, 246, 18, PAL.white, "center");
+
+    blinkTimer += 1;
+    if (Math.floor(blinkTimer / 30) % 2 === 0) {
+      drawText("PRESS SPACE TO START", W / 2, 340, 22, PAL.yellowH, "center");
+    }
+    drawText("ARROWS: MOVE   UP: GAS   DOWN: BRAKE", W / 2, 400, 15, "#cfcfcf", "center");
+  }
+
+  function drawGameOverScreen() {
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, W, H);
+    drawText("GAME OVER", W / 2, 220, 42, "#ff5533", "center");
+    drawText("SCORE " + pad(score, 6), W / 2, 290, 22, PAL.white, "center");
+    drawText("BEST  " + pad(best, 6), W / 2, 320, 22, PAL.white, "center");
+
+    blinkTimer += 1;
+    if (Math.floor(blinkTimer / 30) % 2 === 0) {
+      drawText("PRESS SPACE TO RESTART", W / 2, 390, 20, PAL.yellowH, "center");
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Main loop
+  // ---------------------------------------------------------------
+  let lastTs = 0;
+  function frame(ts) {
+    if (!lastTs) lastTs = ts;
+    let dt = (ts - lastTs) / 1000;
+    if (dt > 0.05) dt = 0.05;
+    lastTs = ts;
+
+    update(dt);
+
+    ctx.clearRect(0, 0, W, H);
+    drawScene();
+    drawHUD();
+
+    if (state === STATE.START) drawStartScreen();
+    if (state === STATE.GAMEOVER) drawGameOverScreen();
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
